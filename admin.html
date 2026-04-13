@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Dashboard — English Kids</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0D1117;--surface:#161B22;--card:#1C2230;--border:#30363D;
+  --text:#F0F6FC;--muted:#8B949E;--accent:#6366F1;--green:#22C55E;
+  --red:#EF4444;--gold:#F59E0B;--blue:#3B82F6;--purple:#A855F7;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;height:100vh}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:400px;display:flex;flex-direction:column;gap:14px}
+.login-box h2{font-size:22px;text-align:center}
+.login-box label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.login-box input{background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:11px 14px;width:100%}
+.login-box input:focus{outline:2px solid var(--accent)}
+.login-box button{background:var(--accent);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;padding:12px;cursor:pointer}
+.login-box .hint{font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
+#login-error{color:var(--red);font-size:13px;text-align:center;min-height:18px}
+
+/* DASHBOARD */
+#dashboard{display:none}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+header h1{font-size:18px;font-weight:800}
+#last-updated{font-size:11px;color:var(--muted)}
+#btn-refresh{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
+main{padding:24px 28px;max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 16px;display:flex;flex-direction:column;gap:5px}
+.stat-label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.stat-value{font-size:34px;font-weight:900}
+.stat-sub{font-size:11px;color:var(--muted)}
+.c-accent{color:var(--accent)}.c-green{color:var(--green)}.c-gold{color:var(--gold)}.c-blue{color:var(--blue)}.c-purple{color:var(--purple)}
+
+.section-title{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.chart-card h3{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--muted)}
+.chart-card canvas{max-height:220px}
+
+/* TABLES */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.table-card h3{font-size:13px;font-weight:700;padding:14px 18px 10px;color:var(--muted);border-bottom:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--card);padding:9px 14px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--card)}
+tbody td{padding:9px 14px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.bg{background:rgba(99,102,241,.2);color:#818CF8}
+.gg{background:rgba(34,197,94,.2);color:#4ADE80}
+.gr{background:rgba(239,68,68,.2);color:#F87171}
+.gd{background:rgba(245,158,11,.2);color:#FCD34D}
+.pct-row{display:flex;align-items:center;gap:6px}
+.pct-track{flex:1;height:5px;background:var(--border);border-radius:3px;min-width:50px}
+.pct-fill{height:100%;border-radius:3px}
+
+/* EMPTY STATE */
+.empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🌟 English Kids Analytics</h2>
+    <div>
+      <label>Supabase Project URL</label>
+      <input id="inp-url" type="url" placeholder="https://xxxxxxxxxxxx.supabase.co" autocomplete="off"/>
+    </div>
+    <div>
+      <label>Service Role Key <span style="color:var(--red)">*</span></label>
+      <input id="inp-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off"/>
+    </div>
+    <button onclick="doLogin()">Open Dashboard</button>
+    <div id="login-error"></div>
+    <div class="hint">
+      Your Supabase project → Settings → API<br/>
+      Use the <strong>service_role</strong> key (not anon) so you can read all data.<br/>
+      These values are never sent anywhere except directly to Supabase.
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header>
+    <h1>🌟 English Kids — Analytics</h1>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="last-updated"></span>
+      <button id="btn-refresh" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- KPIs -->
+    <div>
+      <div class="section-title">Overview</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value c-accent" id="k-sessions">—</div><div class="stat-sub">all time</div></div>
+        <div class="stat-card"><div class="stat-label">Active Today</div><div class="stat-value c-green"  id="k-today">—</div><div class="stat-sub">unique devices</div></div>
+        <div class="stat-card"><div class="stat-label">This Week</div><div class="stat-value c-blue"   id="k-week">—</div><div class="stat-sub">last 7 days</div></div>
+        <div class="stat-card"><div class="stat-label">Total Events</div><div class="stat-value c-purple" id="k-events">—</div><div class="stat-sub">all actions</div></div>
+        <div class="stat-card"><div class="stat-label">Stars Earned</div><div class="stat-value c-gold"   id="k-stars">—</div><div class="stat-sub">⭐ total</div></div>
+        <div class="stat-card"><div class="stat-label">Words Mastered</div><div class="stat-value c-green" id="k-mastered">—</div><div class="stat-sub">vocab_mastered events</div></div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div>
+      <div class="section-title">Activity — Last 30 Days</div>
+      <div class="charts-row">
+        <div class="chart-card"><h3>Daily Active Users</h3><canvas id="ch-dau"></canvas></div>
+        <div class="chart-card"><h3>Daily Events</h3><canvas id="ch-events"></canvas></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">Learning Breakdown</div>
+      <div class="charts-row">
+        <div class="chart-card"><h3>Top Vocabulary Categories</h3><canvas id="ch-cats"></canvas></div>
+        <div class="chart-card"><h3>Practice Accuracy by Topic</h3><canvas id="ch-acc"></canvas></div>
+      </div>
+    </div>
+
+    <!-- TABLES -->
+    <div class="charts-row">
+      <div class="table-card">
+        <h3>🔥 Hardest Questions (lowest accuracy)</h3>
+        <table><thead><tr><th>Prompt</th><th>Attempts</th><th>Accuracy</th></tr></thead>
+        <tbody id="t-hard"></tbody></table>
+      </div>
+      <div class="table-card">
+        <h3>👀 Most Viewed Words</h3>
+        <table><thead><tr><th>Word</th><th>Category</th><th>Views</th></tr></thead>
+        <tbody id="t-words"></tbody></table>
+      </div>
+    </div>
+
+    <!-- SESSIONS -->
+    <div class="table-card">
+      <h3>📱 Recent Sessions</h3>
+      <table>
+        <thead><tr><th>Session ID</th><th>Device</th><th>First Seen</th><th>Last Seen</th><th>Events</th><th>Stars</th></tr></thead>
+        <tbody id="t-sessions"></tbody>
+      </table>
+    </div>
+
+    <!-- LIVE FEED -->
+    <div class="table-card">
+      <h3>⚡ Live Event Feed <span style="font-size:10px;color:var(--muted);font-weight:400">(last 100)</span></h3>
+      <div style="max-height:340px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Time</th><th>Type</th><th>Category</th><th>Word</th><th>Correct</th><th>Stars</th></tr></thead>
+          <tbody id="t-events"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+let SB_URL = "", SB_KEY = "";
+const charts = {};
+
+// ════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════
+document.getElementById("inp-key").addEventListener("keydown", e => { if(e.key==="Enter") doLogin(); });
+
+async function doLogin() {
+  SB_URL = document.getElementById("inp-url").value.trim().replace(/\/$/, "");
+  SB_KEY = document.getElementById("inp-key").value.trim();
+  if (!SB_URL || !SB_KEY) { document.getElementById("login-error").textContent="Please fill in both fields."; return; }
+  try {
+    // Quick test query
+    const r = await sbQuery("events", "id", {limit:1});
+    if (r.error) throw new Error(r.error.message);
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    loadAll();
+    setInterval(loadAll, 30000);
+  } catch(e) {
+    document.getElementById("login-error").textContent = "Connection failed: " + e.message;
+  }
+}
+
+// ════════════════════════════════════════
+//  SUPABASE QUERY HELPER
+// ════════════════════════════════════════
+async function sbFetch(path) {
+  const r = await fetch(SB_URL + path, {
+    headers: { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY }
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function sbQuery(table, select="*", opts={}) {
+  let qs = `select=${select}`;
+  if (opts.filter)  qs += "&" + opts.filter;
+  if (opts.order)   qs += "&order=" + opts.order;
+  if (opts.limit)   qs += "&limit=" + opts.limit;
+  return sbFetch(`/rest/v1/${table}?${qs}`);
+}
+
+// ════════════════════════════════════════
+//  LOAD & RENDER ALL
+// ════════════════════════════════════════
+async function loadAll() {
+  try {
+    // Run all queries in parallel
+    const todayStr = new Date().toISOString().slice(0,10);
+    const weekAgo  = new Date(Date.now()-7*864e5).toISOString();
+
+    const [allEvents, recentEvents, sessions] = await Promise.all([
+      sbQuery("events", "event_type,category,word,correct,stars_delta,ts,session_id,device_hint"),
+      sbQuery("events", "event_type,category,word,correct,stars_delta,ts", {order:"ts.desc", limit:100}),
+      sbQuery("events", "session_id,device_hint,ts", {order:"ts.asc"}),
+    ]);
+
+    if (!Array.isArray(allEvents)) throw new Error("No data");
+
+    // ── KPIs ──
+    const uniqueSessions = [...new Set(allEvents.map(e=>e.session_id))];
+    const today          = allEvents.filter(e=>e.ts&&e.ts.slice(0,10)===todayStr);
+    const thisWeek       = allEvents.filter(e=>e.ts&&e.ts>=weekAgo);
+    const totalStars     = allEvents.reduce((s,e)=>s+(e.stars_delta||0),0);
+    const masteredCount  = allEvents.filter(e=>e.event_type==="vocab_mastered").length;
+
+    setText("k-sessions", fmt(uniqueSessions.length));
+    setText("k-today",    fmt([...new Set(today.map(e=>e.session_id))].length));
+    setText("k-week",     fmt([...new Set(thisWeek.map(e=>e.session_id))].length));
+    setText("k-events",   fmt(allEvents.length));
+    setText("k-stars",    fmt(totalStars));
+    setText("k-mastered", fmt(masteredCount));
+
+    // ── Daily data (last 30 days) ──
+    const days = last30();
+    const dauMap={}, evtMap={};
+    allEvents.forEach(e=>{
+      if (!e.ts) return;
+      const d=e.ts.slice(0,10);
+      dauMap[d]=dauMap[d]||new Set(); dauMap[d].add(e.session_id);
+      evtMap[d]=(evtMap[d]||0)+1;
+    });
+    line("ch-dau",   days, days.map(d=>dauMap[d]?dauMap[d].size:0), "Users","#6366F1");
+    line("ch-events",days, days.map(d=>evtMap[d]||0), "Events","#22C55E");
+
+    // ── Top categories ──
+    const catMap={};
+    allEvents.filter(e=>e.event_type==="vocab_view"&&e.category).forEach(e=>{ catMap[e.category]=(catMap[e.category]||0)+1; });
+    const topCats=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    bar("ch-cats", topCats.map(c=>c[0]), topCats.map(c=>c[1]), "Views", topCats.map((_,i)=>`hsl(${200+i*22},65%,55%)`));
+
+    // ── Practice accuracy by topic ──
+    const topicMap={};
+    allEvents.filter(e=>e.event_type==="practice_answer"&&e.category).forEach(e=>{
+      if (!topicMap[e.category]) topicMap[e.category]={attempts:0,correct:0};
+      topicMap[e.category].attempts++;
+      if (e.correct) topicMap[e.category].correct++;
+    });
+    const topics=Object.entries(topicMap).sort((a,b)=>b[1].attempts-a[1].attempts);
+    const topicPct=topics.map(([,v])=>v.attempts?Math.round(v.correct/v.attempts*100):0);
+    bar("ch-acc", topics.map(t=>t[0]), topicPct, "Accuracy %", topicPct.map(p=>p>=70?"#22C55E":p>=40?"#F59E0B":"#EF4444"));
+
+    // ── Hardest questions ──
+    const qMap={};
+    allEvents.filter(e=>e.event_type==="practice_answer"&&e.word).forEach(e=>{
+      if (!qMap[e.word]) qMap[e.word]={attempts:0,correct:0};
+      qMap[e.word].attempts++; if(e.correct) qMap[e.word].correct++;
+    });
+    const hard=Object.entries(qMap).map(([w,v])=>({word:w,...v,pct:v.attempts?Math.round(v.correct/v.attempts*100):0})).sort((a,b)=>a.pct-b.pct).slice(0,10);
+    renderTable("t-hard", hard, r=>`<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.word)}</td><td>${r.attempts}</td><td><div class="pct-row"><div class="pct-track"><div class="pct-fill" style="width:${r.pct}%;background:${pctColor(r.pct)}"></div></div><span style="color:${pctColor(r.pct)};font-weight:700">${r.pct}%</span></div></td>`, 3);
+
+    // ── Top words ──
+    const wordMap={};
+    allEvents.filter(e=>e.event_type==="vocab_view"&&e.word).forEach(e=>{ wordMap[e.word]=(wordMap[e.word]||{count:0,cat:e.category}); wordMap[e.word].count++; });
+    const topWords=Object.entries(wordMap).sort((a,b)=>b[1].count-a[1].count).slice(0,15);
+    renderTable("t-words", topWords, ([w,v],i)=>`<td>${["🥇","🥈","🥉"][i]||i+1}  ${esc(w)}</td><td style="color:var(--muted);font-size:11px">${esc(v.cat||"")}</td><td><span class="badge bg">${v.count}</span></td>`, 3);
+
+    // ── Sessions ──
+    const sessMap={};
+    allEvents.forEach(e=>{
+      if (!sessMap[e.session_id]) sessMap[e.session_id]={id:e.session_id,device:e.device_hint||"—",first:e.ts,last:e.ts,events:0,stars:0};
+      const s=sessMap[e.session_id];
+      if(e.ts<s.first) s.first=e.ts;
+      if(e.ts>s.last)  s.last=e.ts;
+      s.events++; s.stars+=(e.stars_delta||0);
+    });
+    const sessArr=Object.values(sessMap).sort((a,b)=>b.last.localeCompare(a.last)).slice(0,50);
+    renderTable("t-sessions", sessArr, s=>`
+      <td style="font-family:monospace;color:var(--muted);font-size:10px">${s.id.slice(0,8)}…</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;font-size:11px">${esc(s.device)}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(s.first)}</td>
+      <td style="font-size:11px;color:var(--muted)">${fmtDate(s.last)}</td>
+      <td><span class="badge bg">${s.events}</span></td>
+      <td><span class="badge gd">⭐${s.stars}</span></td>`, 6);
+
+    // ── Live feed ──
+    const TYPE_CLASS={session_start:"bg",vocab_view:"bg",vocab_mastered:"gd",practice_answer:"gg",listen:"bg"};
+    renderTable("t-events", recentEvents, e=>`
+      <td style="font-size:10px;color:var(--muted);white-space:nowrap">${fmtDate(e.ts)}</td>
+      <td><span class="badge ${TYPE_CLASS[e.event_type]||"bg"}">${e.event_type}</span></td>
+      <td style="font-size:11px">${esc(e.category||"—")}</td>
+      <td style="font-size:11px">${esc(e.word||"—")}</td>
+      <td>${e.correct==null?"—":e.correct?"✅":"❌"}</td>
+      <td>${e.stars_delta?`<span class="badge gd">+${e.stars_delta}⭐</span>`:"—"}</td>`, 6);
+
+    document.getElementById("last-updated").textContent = "Updated " + new Date().toLocaleTimeString();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════
+const BASE_OPTS = {responsive:true,maintainAspectRatio:true,plugins:{legend:{labels:{color:"#8B949E",font:{size:11}}}}};
+
+function line(id,labels,data,label,color){
+  const c=document.getElementById(id).getContext("2d");
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart(c,{type:"line",data:{labels,datasets:[{label,data,borderColor:color,backgroundColor:color+"22",tension:.35,fill:true,pointRadius:2,borderWidth:2}]},options:{...BASE_OPTS,scales:{x:{ticks:{color:"#8B949E",maxRotation:45},grid:{color:"#30363D"}},y:{ticks:{color:"#8B949E"},grid:{color:"#30363D"},beginAtZero:true}}}});
+}
+
+function bar(id,labels,data,label,colors){
+  const c=document.getElementById(id).getContext("2d");
+  if(charts[id]) charts[id].destroy();
+  charts[id]=new Chart(c,{type:"bar",data:{labels,datasets:[{label,data,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},options:{...BASE_OPTS,indexAxis:"y",scales:{x:{ticks:{color:"#8B949E"},grid:{color:"#30363D"},beginAtZero:true},y:{ticks:{color:"#8B949E",font:{size:10}},grid:{color:"#30363D"}}}}});
+}
+
+// ════════════════════════════════════════
+//  TABLE HELPER
+// ════════════════════════════════════════
+function renderTable(id, rows, rowFn, cols) {
+  const tb=document.getElementById(id);
+  if (!rows||!rows.length) { tb.innerHTML=`<tr><td colspan="${cols}" class="empty">No data yet</td></tr>`; return; }
+  tb.innerHTML=rows.map((r,i)=>`<tr>${rowFn(r,i)}</tr>`).join("");
+}
+
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+function setText(id,v){ document.getElementById(id).textContent=v; }
+function fmt(n){ return (n??0).toLocaleString(); }
+function esc(s){ return String(s||"").replace(/[&<>"']/g,c=({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function pctColor(p){ return p>=70?"#4ADE80":p>=40?"#FCD34D":"#F87171"; }
+function fmtDate(s){ if(!s) return "—"; try{ return new Date(s).toLocaleString(); }catch{ return s; } }
+function last30(){
+  return Array.from({length:30},(_,i)=>{
+    const d=new Date(); d.setDate(d.getDate()-(29-i)); return d.toISOString().slice(0,10);
+  });
+}
+</script>
+</body>
+</html>
